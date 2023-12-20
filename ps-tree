@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+
+# error if we didn't get a pid
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <pid>"
+    exit 1
+fi
+
+PID=$1
+
+# retrieve all the process info once
+PS_RESULT=$(ps -el -O user)
+
+# filter the process info to the row corresponding to the given pid
+get_row() {
+    local PID="$1"
+    echo $PS_RESULT | 
+        tail -n +2 | 
+        awk '$2 ~ pid' pid="^$PID$"
+
+    # the awk script will match lines whose entire second column matches the pid
+}
+
+# extract the parent pid from a row
+get_ppid() {
+    local ROW="$1"
+    echo $ROW | awk '{ print $3 }'
+
+    # the awk script will print the third column of the given row (the PPID)
+}
+
+# print the header row
+echo $PS_RESULT | head -n 1
+
+while true; do
+    ROW=$(get_row $PID)
+
+    # if we didn't get a row, we're done
+    if [[ -z $ROW ]]; then
+        break
+    fi
+
+    echo $ROW
+    PID=$(get_ppid $ROW)
+done
